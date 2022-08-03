@@ -1,0 +1,19 @@
+// notes //
+-the firebase database will automatically create child files in database when data is stored 
+- when user is created all we have to use is the user's uid when writing data to the database
+
+an update balance function would look like this:
+
+void UpdateBalance(int _balance){
+    db_ref.Child("users").Child(user.uid).Child("balance").GetValueAsync().ContinueWith(task =>{
+        if(task.isFaulted){
+            //log error
+            Debug.LogError("could not get asynced value : value")
+        }
+        else if(task.isCompleted){
+            DataSnapshot data = task.Result;// grab result and store it if needed
+            db_ref.Child("users").Child(user.uid).Child("balance").SetValueAsync(_balance);// overwrites data to database in location of reference's child -> value 
+        }
+    });
+}
+
