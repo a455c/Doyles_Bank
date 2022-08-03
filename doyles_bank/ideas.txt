@@ -17,3 +17,7 @@ void UpdateBalance(int _balance){
     });
 }
 
+
+-transfer button 
+-transfer value taking away from balance
+

@@ -26,6 +26,18 @@ public class FirebaseManager : MonoBehaviour
     public TMP_InputField passwordRegisterField;
     public TMP_InputField passwordRegisterVerifyField;
     public TMP_Text warningRegisterText;
+
+    [Header("User")]
+    public float balance;
+    public TMP_InputField transferValueField;
+    public TMP_InputField transferUidField;
+    public TMP_InputField addValueField;
+
+    [Header("Family")]
+    public string family_name;
+    public string family_code;
+    public TMP_InputField familyCodeField;
+    public bool isChild;
 	#endregion
 
 	#region Initialisation
@@ -69,6 +81,15 @@ public class FirebaseManager : MonoBehaviour
         StartCoroutine(Register(emailRegisterField.text, passwordRegisterField.text, usernameRegisterField.text));
     }
 
+    public void TransferButton(){
+        TransferValue(transferUidField.text, int.Parse(transferValueField.text));
+    }
+
+    public void AddValueButton(){
+        if(!isChild){
+            AddValue(int.Parse(addValueField.text));
+        }       
+    }
 	#endregion
 
 	#region Authentication
@@ -118,8 +139,6 @@ public class FirebaseManager : MonoBehaviour
 
             yield return new WaitForSeconds(2);
             UIManager.instance.UserDataScreen();
-            // Change to user data UI
-            UpdateBalance(10);
         }
     }
 
@@ -205,9 +224,9 @@ public class FirebaseManager : MonoBehaviour
 	#endregion
 
 	#region Database Updates
-    void UpdateBalance(int _balance)
+    void UpdateBalance()
     {
-        db_ref.Child("users").Child(user.UserId).Child("balance").SetValueAsync(_balance).ContinueWith(task => {
+        db_ref.Child("users").Child(user.UserId).Child("balance").GetValueAsync().ContinueWith(task => {
             if (task.IsFaulted)
             {
                 //log error
@@ -215,31 +234,63 @@ public class FirebaseManager : MonoBehaviour
             }
             else if (task.IsCompleted)
             {
-                // task completed
+                DataSnapshot snapshot = task.Result;
+                float data = int.Parse(snapshot.Value);
+                if(data > balance){
+                    balance = data;
+                }
+                else if(data < balance){
+                    db_ref.Child("users").Child(user.UserId).Child("balance").SetValueAsync(balance).ContinueWith(task => {
+                        if (task.IsFaulted)
+                        {
+                            //log error
+                            Debug.LogError("could not get asynced value : value");
+                        }
+                        else if (task.IsCompleted)
+                        {
+                            // task completed
+                        }
+                    });
+                }
+                else{
+                    // balance in database is equal to balance in unity
+                }
             }
         });
     }
 	#endregion
 
-	#region Logic Functions
-	void GetChildCount()
-	{
-        db_ref.Child("users").GetValueAsync().ContinueWith(task => {
-			if (task.IsFaulted)
-			{
-                Debug.LogError("task was faulted");
-			}
-            else if (task.IsCompleted)
-			{
-                DataSnapshot snapshot = task.Result;
-                long no_children = snapshot.ChildrenCount;
-			}
-        });
-	}
-    void TransferValue(string _uid, int _value)
+	#region Balance/Value Functions
+    void TransferValue(string _uid, float _value)
     {
-        // gets the balance of targeted user
-        db_ref.Child("users").Child(_uid).Child("balance").GetValueAsync().ContinueWith(task => {
+        if(_value > 0){
+            balance -= _value;
+            UpdateBalance();
+            // gets the balance of targeted user
+            db_ref.Child("users").Child(_uid).Child("balance").GetValueAsync().ContinueWith(task => {
+                if (task.IsFaulted)
+                {
+                    //log error
+                    Debug.LogError("could not get asynced value : balance");
+                }
+                else if (task.IsCompleted)
+                {
+                    DataSnapshot snapshot = task.Result;
+                    // adds value to original balance
+                    int newBalance = int.Parse(snapshot.Value.ToString());
+                    newBalance += _value;
+                    // sets value of balance to newly calculated one
+                    db_ref.Child("users").Child(_uid).Child("balance").SetValueAsync(newBalance);
+                }
+            });
+        }
+        
+    }
+
+    void AddValue(float _value){
+        balance += _value;
+        UpdateBalance();
+        db_ref.Child("users").Child(user.UserId).Child("balance").GetValueAsync().ContinueWith(task => {
             if (task.IsFaulted)
             {
                 //log error
@@ -257,4 +308,26 @@ public class FirebaseManager : MonoBehaviour
         });
     }
 	#endregion
+
+    #region Family Functions
+    void GetFamilyChildCount(string _familyCode)
+	{
+        db_ref.Child("users").Child(_familyName).GetValueAsync().ContinueWith(task => {
+			if (task.IsFaulted)
+			{
+                Debug.LogError("task was faulted");
+			}
+            else if (task.IsCompleted)
+			{
+                DataSnapshot snapshot = task.Result;
+                long no_children = snapshot.ChildrenCount;
+			}
+        });
+	}
+
+    void CreateFamily(){
+        int code = 1234536; // make a random 5 digit code to represent family
+        return code;
+    }
+    #endregion
 }
