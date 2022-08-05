@@ -7,8 +7,8 @@ using TMPro;
 
 public class FirebaseManager : MonoBehaviour
 {
-    #region Variables
-    [Header("Firebase")]
+	#region Variables
+	[Header("Firebase")]
     public DependencyStatus dependencyStatus;
     public FirebaseAuth auth;
     public FirebaseUser user;
@@ -38,15 +38,15 @@ public class FirebaseManager : MonoBehaviour
     public string family_code;
     public TMP_InputField familyCodeField;
     public bool isChild;
-    #endregion
+	#endregion
 
-    #region Initialisation
-    void Awake()
+	#region Initialisation
+	void Awake()
     {
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
         {
             dependencyStatus = task.Result;
-            if (dependencyStatus == DependencyStatus.Available)
+            if(dependencyStatus == DependencyStatus.Available)
             {
                 InitializeFirebase();
             }
@@ -64,12 +64,12 @@ public class FirebaseManager : MonoBehaviour
         auth = FirebaseAuth.DefaultInstance;
         db_ref = FirebaseDatabase.GetInstance("https://doyle-s-bank-default-rtdb.asia-southeast1.firebasedatabase.app").RootReference;
     }
-    #endregion
+	#endregion
 
-    #region Buttons
+	#region Buttons
 
-    //Function for the login button
-    public void LoginButton()
+	//Function for the login button
+	public void LoginButton()
     {
         //Call the login coroutine passing the email and password
         StartCoroutine(Login(emailLoginField.text, passwordLoginField.text));
@@ -81,22 +81,19 @@ public class FirebaseManager : MonoBehaviour
         StartCoroutine(Register(emailRegisterField.text, passwordRegisterField.text, usernameRegisterField.text));
     }
 
-    public void TransferValueButton()
-    {
+    public void TransferButton(){
         TransferValue(transferUidField.text, int.Parse(transferValueField.text));
     }
 
-    public void AddValueButton()
-    {
-        if (!isChild)
-        {
+    public void AddValueButton(){
+        if(!isChild){
             AddValue(int.Parse(addValueField.text));
-        }
+        }       
     }
-    #endregion
+	#endregion
 
-    #region Authentication
-    private IEnumerator Login(string _email, string _password)
+	#region Authentication
+	private IEnumerator Login(string _email, string _password)
     {
         //Call the Firebase auth signin function passing the email and password
         var LoginTask = auth.SignInWithEmailAndPasswordAsync(_email, _password);
@@ -142,7 +139,6 @@ public class FirebaseManager : MonoBehaviour
 
             yield return new WaitForSeconds(2);
             UIManager.instance.UserDataScreen();
-            UpdateBalance();
         }
     }
 
@@ -200,7 +196,6 @@ public class FirebaseManager : MonoBehaviour
                 {
                     //Create a user profile and set the username
                     UserProfile profile = new UserProfile { DisplayName = _username };
-                    LoadBalance();
 
                     //Call the Firebase auth update user profile function passing the profile with the username
                     var ProfileTask = user.UpdateUserProfileAsync(profile);
@@ -226,23 +221,9 @@ public class FirebaseManager : MonoBehaviour
             }
         }
     }
-    #endregion
+	#endregion
 
-    #region Database Updates
-    void LoadBalance()
-	{
-        db_ref.Child("users").Child(user.UserId).Child("balance").SetValueAsync(balance).ContinueWith(task => {
-            if (task.IsFaulted)
-            {
-                //log error
-                Debug.LogError("could not get asynced value : value");
-            }
-            else if (task.IsCompleted)
-            {
-                // task completed
-            }
-        });
-    }
+	#region Database Updates
     void UpdateBalance()
     {
         db_ref.Child("users").Child(user.UserId).Child("balance").GetValueAsync().ContinueWith(task => {
@@ -254,13 +235,11 @@ public class FirebaseManager : MonoBehaviour
             else if (task.IsCompleted)
             {
                 DataSnapshot snapshot = task.Result;
-                float data = int.Parse(snapshot.Value.ToString());
-                if (data > balance)
-                {
+                float data = int.Parse(snapshot.Value);
+                if(data > balance){
                     balance = data;
                 }
-                else if (data < balance)
-                {
+                else if(data < balance){
                     db_ref.Child("users").Child(user.UserId).Child("balance").SetValueAsync(balance).ContinueWith(task => {
                         if (task.IsFaulted)
                         {
@@ -273,20 +252,18 @@ public class FirebaseManager : MonoBehaviour
                         }
                     });
                 }
-                else
-                {
+                else{
                     // balance in database is equal to balance in unity
                 }
             }
         });
     }
-    #endregion
+	#endregion
 
-    #region Balance/Value Functions
+	#region Balance/Value Functions
     void TransferValue(string _uid, float _value)
     {
-        if (_value > 0 && _uid != user.UserId)
-        {
+        if(_value > 0){
             balance -= _value;
             UpdateBalance();
             // gets the balance of targeted user
@@ -300,18 +277,17 @@ public class FirebaseManager : MonoBehaviour
                 {
                     DataSnapshot snapshot = task.Result;
                     // adds value to original balance
-                    float newBalance = int.Parse(snapshot.Value.ToString());
+                    int newBalance = int.Parse(snapshot.Value.ToString());
                     newBalance += _value;
                     // sets value of balance to newly calculated one
                     db_ref.Child("users").Child(_uid).Child("balance").SetValueAsync(newBalance);
                 }
             });
         }
-
+        
     }
 
-    void AddValue(float _value)
-    {
+    void AddValue(float _value){
         balance += _value;
         UpdateBalance();
         db_ref.Child("users").Child(user.UserId).Child("balance").GetValueAsync().ContinueWith(task => {
@@ -324,33 +300,32 @@ public class FirebaseManager : MonoBehaviour
             {
                 DataSnapshot snapshot = task.Result;
                 // adds value to original balance
-                float newBalance = int.Parse(snapshot.Value.ToString());
+                int newBalance = int.Parse(snapshot.Value.ToString());
                 newBalance += _value;
                 // sets value of balance to newly calculated one
-                db_ref.Child("users").Child(user.UserId).Child("balance").SetValueAsync(newBalance);
+                db_ref.Child("users").Child(_uid).Child("balance").SetValueAsync(newBalance);
             }
         });
     }
-    #endregion
+	#endregion
 
     #region Family Functions
     void GetFamilyChildCount(string _familyCode)
-    {
-        db_ref.Child("users").Child(_familyCode).GetValueAsync().ContinueWith(task => {
-            if (task.IsFaulted)
-            {
+	{
+        db_ref.Child("users").Child(_familyName).GetValueAsync().ContinueWith(task => {
+			if (task.IsFaulted)
+			{
                 Debug.LogError("task was faulted");
-            }
+			}
             else if (task.IsCompleted)
-            {
+			{
                 DataSnapshot snapshot = task.Result;
                 long no_children = snapshot.ChildrenCount;
-            }
+			}
         });
-    }
+	}
 
-    int CreateFamily()
-    {
+    void CreateFamily(){
         int code = 1234536; // make a random 5 digit code to represent family
         return code;
     }
